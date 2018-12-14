@@ -1,8 +1,10 @@
 module Main exposing (Model, Msg(..), init, main, update, view)
 
 import Browser
-import Html exposing (Html, button, div, text)
-import Html.Events exposing (onClick)
+import Html exposing (Html, button, div, text, textarea)
+import Html.Events exposing (onClick, onInput)
+import Json.Decode as D
+import Json.Encode as E
 
 
 main =
@@ -14,12 +16,19 @@ main =
 
 
 type alias Model =
-    Int
+    { content : String, output : String }
+
+
+type alias Cause =
+    { name : String
+    , percent : Float
+    , per100k : Float
+    }
 
 
 init : Model
 init =
-    0
+    { content = "", output = "" }
 
 
 
@@ -27,18 +36,53 @@ init =
 
 
 type Msg
-    = Increment
-    | Decrement
+    = Content String
+    | Change
 
 
 update : Msg -> Model -> Model
 update msg model =
     case msg of
-        Increment ->
-            model + 1
+        Content newContent ->
+            { model | content = newContent }
 
-        Decrement ->
-            model - 1
+        Change ->
+            { model | output = changeJson model.content }
+
+
+changeJson : String -> String
+changeJson jsonString =
+    case D.decodeString decoder jsonString of
+        Ok json ->
+            E.encode 4 (encode json)
+
+        Err message ->
+            "err"
+
+
+
+-- ENCODE
+
+
+encode : Cause -> E.Value
+encode cause =
+    E.object
+        [ ( "name", E.string cause.name )
+        , ( "percent", E.float cause.percent )
+        , ( "per100k", E.float cause.per100k )
+        ]
+
+
+
+-- DECODER
+
+
+decoder : D.Decoder Cause
+decoder =
+    D.map3 Cause
+        (D.field "name" D.string)
+        (D.field "percent" D.float)
+        (D.field "per100k" D.float)
 
 
 
@@ -48,7 +92,7 @@ update msg model =
 view : Model -> Html Msg
 view model =
     div []
-        [ button [ onClick Decrement ] [ text "-" ]
-        , div [] [ text (String.fromInt model) ]
-        , button [ onClick Increment ] [ text "+" ]
+        [ textarea [ onInput Content ] []
+        , textarea [] [ text model.output ]
+        , button [ onClick Change ] [ text "change" ]
         ]
