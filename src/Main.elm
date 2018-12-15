@@ -1,14 +1,17 @@
-module Main exposing (Model, Msg(..), init, main, update, view)
+port module Main exposing (Model, Msg(..), init, main, update, view)
 
 import Browser
 import Html exposing (Html, button, div, text, textarea)
 import Html.Events exposing (onClick, onInput)
-import Json.Decode as D
-import Json.Encode as E
 
 
 main =
-    Browser.sandbox { init = init, update = update, view = view }
+    Browser.element
+        { init = init
+        , update = update
+        , subscriptions = subscriptions
+        , view = view
+        }
 
 
 
@@ -16,19 +19,12 @@ main =
 
 
 type alias Model =
-    { content : String, output : String }
+    { content : String, output : String, error : String }
 
 
-type alias Cause =
-    { name : String
-    , percent : Float
-    , per100k : Float
-    }
-
-
-init : Model
-init =
-    { content = "", output = "" }
+init : () -> ( Model, Cmd Msg )
+init _ =
+    ( Model "" "" "", Cmd.none )
 
 
 
@@ -38,51 +34,36 @@ init =
 type Msg
     = Content String
     | Change
+    | Output String
+    | Error String
 
 
-update : Msg -> Model -> Model
+update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         Content newContent ->
-            { model | content = newContent }
+            ( { model | content = newContent }, Cmd.none )
 
         Change ->
-            { model | output = changeJson model.content }
+            ( model, toJs model.content )
 
+        Output newJson ->
+            ( { model | output = newJson, error = "" }, Cmd.none )
 
-changeJson : String -> String
-changeJson jsonString =
-    case D.decodeString decoder jsonString of
-        Ok json ->
-            E.encode 4 (encode json)
-
-        Err message ->
-            "err"
+        Error error ->
+            ( { model | output = "", error = error }, Cmd.none )
 
 
 
--- ENCODE
+-- SUBSCRIPTIONS
 
 
-encode : Cause -> E.Value
-encode cause =
-    E.object
-        [ ( "name", E.string cause.name )
-        , ( "percent", E.float cause.percent )
-        , ( "per100k", E.float cause.per100k )
+subscriptions : Model -> Sub Msg
+subscriptions model =
+    Sub.batch
+        [ toElm Output
+        , toElmErr Error
         ]
-
-
-
--- DECODER
-
-
-decoder : D.Decoder Cause
-decoder =
-    D.map3 Cause
-        (D.field "name" D.string)
-        (D.field "percent" D.float)
-        (D.field "per100k" D.float)
 
 
 
@@ -94,5 +75,19 @@ view model =
     div []
         [ textarea [ onInput Content ] []
         , textarea [] [ text model.output ]
+        , div [] [ text model.error ]
         , button [ onClick Change ] [ text "change" ]
         ]
+
+
+
+-- Port
+
+
+port toJs : String -> Cmd msg
+
+
+port toElm : (String -> msg) -> Sub msg
+
+
+port toElmErr : (String -> msg) -> Sub msg

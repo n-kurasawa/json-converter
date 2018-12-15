@@ -1,0 +1,26 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Main</title>
+  <script src="main.js"></script>
+</head>
+
+<body>
+  <div id="elm"></div>
+  <script>
+  const app = Elm.Main.init({
+    node: document.getElementById('elm')
+  });
+
+  app.ports.toJs.subscribe((jsonString) => {
+    try {
+        json = JSON.parse(jsonString);
+        app.ports.toElm.send(JSON.stringify(json, null, 4))
+    } catch (e) {
+        app.ports.toElmErr.send(e.message)
+    }
+  });
+  </script>
+</body>
+</html>
