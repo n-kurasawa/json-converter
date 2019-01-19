@@ -16,9 +16,9 @@
   app.ports.toJs.subscribe((jsonString) => {
     try {
         json = JSON.parse(jsonString);
-        app.ports.toElm.send(JSON.stringify(json, null, 4))
+        app.ports.toElm.send(JSON.stringify(json, null, 4));
     } catch (e) {
-        app.ports.toElmErr.send(e.message)
+        app.ports.toElmErr.send(e.message);
     }
   });
   </script>
